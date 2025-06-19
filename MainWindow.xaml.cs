@@ -1,5 +1,6 @@
 using Azure.AI.OpenAI;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace Dalle3_CSharp_Advent
     public sealed partial class MainWindow : Window
     {
         private const string OPENAI_KEY = "";
-        private const string SAVE_FOLDER = "Advent DALLE";
+        private const string SAVE_FOLDER = "Holiday DALLE";
         private Uri _currentImage;
         private string _currentPrompt;
 
@@ -50,7 +51,8 @@ namespace Dalle3_CSharp_Advent
 
             try
             {
-                _currentPrompt = await GeneratePrompt(HumanPrompt.Text);
+                string selectedHoliday = GetSelectedHoliday();
+                _currentPrompt = await GeneratePrompt(HumanPrompt.Text, selectedHoliday);
 
                 ShowPrompt(_currentPrompt);
                 var image = await GenerateImage(_currentPrompt);
@@ -79,7 +81,7 @@ namespace Dalle3_CSharp_Advent
             FinishedState();
         }
 
-        private static async Task<string> GeneratePrompt(string userPrompt)
+        private static async Task<string> GeneratePrompt(string userPrompt, string holiday)
         {
             if (string.IsNullOrWhiteSpace(OPENAI_KEY))
             {
@@ -87,6 +89,8 @@ namespace Dalle3_CSharp_Advent
             }
 
             OpenAIClient client = new(OPENAI_KEY);
+
+            string systemMessage = GetHolidaySystemMessage(holiday);
 
             var responseCompletion = await client.GetChatCompletionsAsync(
                 new ChatCompletionsOptions()
@@ -96,7 +100,7 @@ namespace Dalle3_CSharp_Advent
                     MaxTokens = 256,                    
                     DeploymentName = "gpt-4",
                     Messages = {
-                        new ChatRequestSystemMessage("Create a prompt for Dall-e that will generate a beautiful Christmas scene using the following text for inspiration:"),
+                        new ChatRequestSystemMessage(systemMessage),
                         new ChatRequestUserMessage(userPrompt),
                     },
                 });
@@ -148,6 +152,28 @@ namespace Dalle3_CSharp_Advent
         {
             ProgressIndicator.IsActive = false;
             Generate.IsEnabled = true;
+        }
+
+        private string GetSelectedHoliday()
+        {
+            if (HolidaySelector.SelectedItem is ComboBoxItem selectedItem)
+            {
+                return selectedItem.Content.ToString();
+            }
+            return "Christmas"; // Default fallback
+        }
+
+        private static string GetHolidaySystemMessage(string holiday)
+        {
+            return holiday switch
+            {
+                "Christmas" => "Create a prompt for Dall-e that will generate a beautiful Christmas scene using the following text for inspiration:",
+                "Easter" => "Create a prompt for Dall-e that will generate a beautiful Easter scene with spring elements, Easter eggs, bunnies, and pastel colors using the following text for inspiration:",
+                "Valentine's Day" => "Create a prompt for Dall-e that will generate a beautiful Valentine's Day scene with romantic elements, hearts, roses, and warm colors using the following text for inspiration:",
+                "Halloween" => "Create a prompt for Dall-e that will generate a beautiful Halloween scene with spooky elements, pumpkins, autumn colors, and festive decorations using the following text for inspiration:",
+                "Fourth of July" => "Create a prompt for Dall-e that will generate a beautiful Fourth of July scene with patriotic elements, fireworks, red white and blue colors, and American symbols using the following text for inspiration:",
+                _ => "Create a prompt for Dall-e that will generate a beautiful holiday scene using the following text for inspiration:"
+            };
         }
 
         private static async Task<string> GetPicturesFolder()
